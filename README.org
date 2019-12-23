@@ -1,0 +1,112 @@
+* minimal alexa fake-wemo library
+https://github.com/philbowles/weenymo
+
+** requires
+#include <ESP8266WiFi.h>
+#include <ESPAsyncUDP.h>
+#include <ESPAsyncWebServer.h>
+https://github.com/me-no-dev/ESPAsyncWebServer
+
+* improved version of radio control, using a frequency-programmable radio
+https://github.com/EinfachArne/Somfy_Remote
+
+
+#ifdef ESP32
+pinRx = 4; pinTx = 2;  // for esp32! Receiver on GPIO pin 4. Transmit on GPIO pin 2.
+#elif ESP8266
+pinRx = 4; pinTx = 5;  // for esp8266! Receiver on pin 4 = D2. Transmit on pin 5 = D1.
+#else
+pinRx = 0; pinTx = 6;  // for Arduino! Receiver on interrupt 0 => that is pin #2. Transmit on pin 6.
+#endif
+
+
+// Set pins according to module
+#if defined __AVR_ATmega168__ || defined __AVR_ATmega328P__
+    gdo0Pin = 2;
+    gdo2Pin = 3;
+#elif ESP32
+    gdo0Pin = 2;
+    gdo2Pin = 4;
+#elif ESP8266
+    gdo0Pin = D2;  // rx yellow (unused)
+    gdo2Pin = D1;  // tx grey
+#endif
+    Serial.printf ("gdo0Pin = %d, gdo2Pin = %d\n", gdo0Pin, gdo2Pin);
+
+** requires
+ [[https://github.com/LSatan/RCSwitch-CC1101-Driver-Lib][RCSwitch-CC1101-Driver-Lib]]
+
+* hardware
+** HiLetgo New Version ESP8266 NodeMCU LUA CP2102 ESP-12E Internet WiFi Development Board Open Source Serial Wireless Module Works Great with Arduino IDE/Micropython
+
+Tools -> Board -> NodeMCU 1.0 (ESP-12E Module)
+Tools -> Upload Speed -> 921600
+Tools -> CPU Frequency -> 80 Mhz
+Tools -> Flash Size -> 4M (3M SPIFFS)
+
+firmware: https://github.com/nodemcu/nodemcu-firmware
+
+** Solu CC1101 Wireless Transceiver Module with spring Antenna for Arduino// Wireless RF Transceiver 315/433/868/915MHZ + spring Antenna Wireless Module
+Worked exactly how it should. Normally the CC1101 breakout boards have
+10 pins. This is because they have 2 VIN pins and 2 GND pins. This one
+has one of each, hence only the 8 pins.  Here's the pinout:
+| 1.GND  | 2.VCC  |
+| 3.GDO0 | 4.CSN  |
+| 5.SCLK | 6.SI   |
+| 7.SO   | 8.GDO2 |
+
+** electrical connection
+| VCC | VCC |
+| SI  | SCK |
+| SO  | GD2 |
+| CSN | GD0 |
+| GND | GND |
+
+
+| CC1101      | color  | NodeMCU | connection     | description                                                                                                                           |
+|-------------+--------+---------+----------------+---------------------------------------------------------------------------------------------------------------------------------------|
+| 1.GND       | gray   | gnd     | ground analog  | Analog Ground Connection                                                                                                              |
+| 2.VCC       | white  | 3v3     | Power Input    | 1.9v to 3.6v                                                                                                                          |
+| 3.GDO0      | yellow | d1      | Digital I/O    | (INPUT) Clock Output, Down Divided from XOSC, Serial Output RX Data, Serial Input TX Data, Analog Text I/O for Prototype / Production Testing |
+| 4.CSN       | orange | d8      | Digital Input  | Serial Configuration Interface, Chip select Digital Output                                                                            |
+| 5.SCLK      | purple | d5      | Digital Input  | Serial Configuration Interface, Clock Input / Data Output                                                                             |
+| 6.SI        | blue   | d7      | Digital Input  | Serial Configuration Interface, Data Input                                                                                            |
+| 7.SO (GDO1) | green  | d6      | Digital Output | Optional Output Test Signals                                                                                                          |
+| 8.GDO2      | brown  | d2      | Digital Output | (OUTPUT) FIFO Status Signals / Clear Channel Indicator / Clock Output, Down-Divided from   XOSC / Serial Output RX Data               |
+
+See https://github.com/supersjimmie/IthoEcoFanRFT  ??
+Connections between the CC1101 and the ESP8266 or Arduino:
+| CC11xx pins   | ESP pins | Arduino pins | Description                                        |
+|---------------+----------+--------------+----------------------------------------------------|
+| 1 - VCC       | VCC      | VCC          | 3v3                                                |
+| 2 - GND       | GND      | GND          | Ground                                             |
+| 3 - MOSI      | 13=D7    | Pin 11       | Data input to CC11xx                               |
+| 4 - SCK       | 14=D5    | Pin 13       | Clock pin                                          |
+| 5 - MISO/GDO1 | 12=D6    | Pin 12       | Data output from CC11xx / serial clock from CC11xx |
+| 6 - GDO2      | 04=D2    | Pin  2       | Programmable output                                |
+| 7 - GDO0      | ?        | Pin  ?       | Programmable output                                |
+| 8 - CSN       | 15=D8    | Pin 10       | Chip select / (SPI_SS)                             |
+Note that CC11xx pin GDO0 is not used. Also note that the GDO2 pin connected to pin 2 on an Arduino. Change #define ITHO_IRQ_PIN in the example ino accordingly.
+
+https://mcpforlife.com/2018/09/24/using-home-app-to-control-your-ventilation-system/ ??
+| CC1101 Pin | Wire Color | CC1101 Pin function | ESP8266 Pin | Description                                 |
+|------------+------------+---------------------+-------------+---------------------------------------------|
+|          1 | Red        | VCC                 | 3V3         | Power supply CC1101 1.8V ~3.6V ESP8266 3.3V |
+|          2 |            | GDO0                |             |                                             |
+|          3 | Green      | CSN                 | D8          | SPI Chip select                             |
+|          4 | White      | SCK                 | D5          | SPI clock                                   |
+|          5 | Yellow     | MOSI                | D7          | SPI data input                              |
+|          6 | Brown      | MISO/GDO1           | D6          | SPI data output                             |
+|          7 | Blue       | GDO2                | D2          | Information output                          |
+|          8 | Black      | GND                 | GND         | Ground                                      |
+|          9 |            | ANT                 |             | Antenna                                     |
+|         10 | Black      | GND                 | GND         | Ground                                      |
+
+https://raw.githubusercontent.com/LSatan/RCSwitch-CC1101-Driver-Lib/master/WIRING%20ESP32.jpg
+* Background
+transmission at 433.42 MHz
+
+** original instructable shows connection to existing remote, alexa library
+https://www.instructables.com/id/How-to-Connect-Your-Somfy-Remote-to-Alexa-With-an-/
+** direct radio control, not needing to sacrifice a remote
+https://4x5mg.inphoto.co.il/2018/06/10/controlling-somfy-blinds-with-esp8266/
