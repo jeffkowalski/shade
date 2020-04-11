@@ -55,11 +55,12 @@ has one of each, hence only the 8 pins.  Here's the pinout:
 | 7.SO   | 8.GDO2 |
 
 ** electrical connection
-| VCC | VCC |
-| SI  | SCK |
-| SO  | GD2 |
-| CSN | GD0 |
-| GND | GND |
+
+| 3v  | red    | VCC | VCC | nc     |     |
+| d7  | blue   | SI  | SCK | purple | d5  |
+| d6  | green  | SO  | GD2 | grey   | d2  |
+| d8  | orange | CSN | GD0 | yellow | d1  |
+| gnd | black  | GND | GND | nc     |     |
 
 
 | CC1101      | color  | NodeMCU | connection     | description                                                                                                                           |
