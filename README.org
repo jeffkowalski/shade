@@ -8,8 +8,7 @@ https://github.com/philbowles/weenymo
 https://github.com/me-no-dev/ESPAsyncWebServer
 
 * improved version of radio control, using a frequency-programmable radio
-https://github.com/EinfachArne/Somfy_Remote
-
+[[https://github.com/EinfachArne/Somfy_Remote][Somfy_Remote]]
 
 #ifdef ESP32
 pinRx = 4; pinTx = 2;  // for esp32! Receiver on GPIO pin 4. Transmit on GPIO pin 2.
@@ -34,7 +33,7 @@ pinRx = 0; pinTx = 6;  // for Arduino! Receiver on interrupt 0 => that is pin #2
     Serial.printf ("gdo0Pin = %d, gdo2Pin = %d\n", gdo0Pin, gdo2Pin);
 
 ** requires
- [[https://github.com/LSatan/RCSwitch-CC1101-Driver-Lib][RCSwitch-CC1101-Driver-Lib]]
+[[https://github.com/LSatan/SmartRC-CC1101-Driver-Lib][SmartRC-CC1101-Driver-Lib]]
 
 * hardware
 ** HiLetgo New Version ESP8266 NodeMCU LUA CP2102 ESP-12E Internet WiFi Development Board Open Source Serial Wireless Module Works Great with Arduino IDE/Micropython
@@ -103,7 +102,7 @@ https://mcpforlife.com/2018/09/24/using-home-app-to-control-your-ventilation-sys
 |         10 | Black      | GND                 | GND         | Ground                                      |
 
 https://raw.githubusercontent.com/LSatan/RCSwitch-CC1101-Driver-Lib/master/WIRING%20ESP32.jpg
-* Background
+* background
 transmission at 433.42 MHz
 
 ** original instructable shows connection to existing remote, alexa library
