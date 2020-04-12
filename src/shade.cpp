@@ -3,106 +3,101 @@
 #include <Somfy_Remote.h>
 #include <weenyMo.h>
 
-#define EEPROM_SIZE 64
-//#define INDICATOR LED_BUILTIN
-#define INDICATOR D4
 
-SomfyRemote somfy("remote1", 0x131478);  // <- Change remote name and remote code here!
-
-class Blinker {
+static class Blinker {
     bool                enabled;
     int const           led = D4;
     unsigned long       previousMillis;   // will store last time LED was updated
     unsigned long const interval = 1000;  // interval at which to blink (milliseconds)
 
   public:
-    Blinker(bool enable) : enabled(enable), previousMillis(0) {
+    Blinker (bool enable)
+        : enabled (enable)
+        , previousMillis (0) {
         if (enabled)
-            pinMode(led, OUTPUT);
+            pinMode (led, OUTPUT);
     }
 
-    void blink() {
+    void blink () const {
         if (!enabled)
             return;
-        digitalWrite(led, LOW);
-        delay(100);
-        digitalWrite(led, HIGH);
-        delay(100);
+        digitalWrite (led, LOW);
+        delay (100);
+        digitalWrite (led, HIGH);
+        delay (100);
     }
 
-    void update() {
-        unsigned long currentMillis = millis();
+    void update () {
+        unsigned long currentMillis = millis ();
         if (currentMillis - previousMillis >= interval) {
-            // Serial.println("blink");
-            blink();
+            blink ();
             previousMillis = currentMillis;
         }
     }
-} Blinker(false);
+} blinker (true);
 
-void commandShade(String command) {
-    Blinker.blink();
-    Serial.println(command);
-    somfy.move(command);
-    EEPROM.commit();
-    if (command[0] == 'U')              // off
-        digitalWrite(INDICATOR, HIGH);  // ESP8266 builtin LED is "backwards" i.e. active LOW
-    else if (command[0] == 'D')         // on
-        digitalWrite(INDICATOR, LOW);   // ESP8266 builtin LED is "backwards" i.e. active LOW
+
+#define EEPROM_SIZE 64
+#define INDICATOR D0
+
+static SomfyRemote somfy ("somfy", 0x131478);  // <- Change remote name and remote code here!
+
+static void commandShade (String command) {
+    blinker.blink ();
+    Serial.println (command);
+    somfy.move (command);
+    EEPROM.commit ();
+    if (command[0] == 'U')               // off
+        digitalWrite (INDICATOR, HIGH);  // ESP8266 builtin LED is "backwards" i.e. active LOW
+    else if (command[0] == 'D')          // on
+        digitalWrite (INDICATOR, LOW);   // ESP8266 builtin LED is "backwards" i.e. active LOW
 }
 
 //
 // This function will be called when Alexa hears "switch [on | off] 'shade'"
 //
-void onVoiceCommand(bool onoff) {
-    Serial.printf("onVoiceCommand %d\n", onoff);
-
-    if (onoff)
-        commandShade("DOWN");
-    else
-        commandShade("UP");
+static void onVoiceCommand (bool onoff) {
+    Serial.printf ("onVoiceCommand %d\n", onoff);
+    commandShade (onoff ? "DOWN" : "UP");
 }
 
-bool getAlexaState() {
-    Serial.printf("getAlexaState %d\n", !digitalRead(INDICATOR));
-    return !digitalRead(INDICATOR);
+bool getAlexaState () {
+    Serial.printf ("getAlexaState %d\n", !digitalRead (INDICATOR));
+    return !digitalRead (INDICATOR);
 }
 
-//
-// The only constructor: const char* name, function<void(bool)> onCommand
-// choose the name wisely: Alexa has very selective hearing!
-//
-weenyMo w("shade", onVoiceCommand);
+static weenyMo weeny ("shade", onVoiceCommand);  // choose the name wisely: Alexa has very selective hearing!
 
-void setup() {
-    Serial.begin(9600);
+void setup () {
+    Serial.begin (9600);
 
-    pinMode(INDICATOR, OUTPUT);
-    EEPROM.begin(EEPROM_SIZE);
+    pinMode (INDICATOR, OUTPUT);
+    digitalWrite (INDICATOR, HIGH);   // ESP8266 builtin LED is "backwards" i.e. active LOW
 
-    Blinker.blink();
+    EEPROM.begin (EEPROM_SIZE);
 
-    WiFi.begin(WIFI_SSID, WIFI_PSK);
-    WiFi.waitForConnectResult();  // so much neater than those stupid loops and dots
-    w.gotIPAddress();             // ready to roll...Tell Alexa to discover devices.
+    blinker.blink ();
 
-    Blinker.blink();
-    Blinker.blink();
+    WiFi.begin (WIFI_SSID, WIFI_PSK);  // defined in credentials.h
+    WiFi.waitForConnectResult ();      // so much neater than those stupid loops and dots
+    weeny.gotIPAddress ();             // ready to roll...Tell Alexa to discover devices.
 
-    Serial.println("To program, long-press the program button on remote until blind goes up and down "
-                   "slightly, then send 'PROGRAM' command via serial monitor.");
-    Serial.println("Ready");
+    blinker.blink ();
+    blinker.blink ();
+
+    Serial.println ("To program, long-press the program button on remote until blind goes up and down "
+                    "slightly, then send 'PROGRAM' command via serial monitor.");
+    Serial.println ("Ready");
 }
 
-void loop() {
+void loop () {
     // check if input is available
-    if (Serial.available()) {
-        String command = Serial.readString();
-        command.trim();
+    if (Serial.available ()) {
+        String command = Serial.readString ();
+        command.trim ();
         if (command[0] == 'U' || command[0] == 'D' || command[0] == 'M' || command[0] == 'P')
-            for (int i = 0; i < 10; ++i)
-                commandShade(command);
+            commandShade (command);
     }
 
-    Blinker.update();
+    blinker.update ();
 }
