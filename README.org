@@ -56,6 +56,11 @@ has one of each, hence only the 8 pins.  Here's the pinout:
 
 ** electrical connection
 
+*** FS1000A
+https://components101.com/sites/default/files/component_pin/433-MHz-RF-Transmitter-Module-Pinout_0.jpg
+
+*** CC1101
+
 | 3v  | red    | VCC | VCC | nc     |     |
 | d7  | blue   | SI  | SCK | purple | d5  |
 | d6  | green  | SO  | GD2 | grey   | d2  |
