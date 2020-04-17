@@ -115,3 +115,6 @@ transmission at 433.42 MHz
 https://www.instructables.com/id/How-to-Connect-Your-Somfy-Remote-to-Alexa-With-an-/
 ** direct radio control, not needing to sacrifice a remote
 https://4x5mg.inphoto.co.il/2018/06/10/controlling-somfy-blinds-with-esp8266/
+** protocol documentation
+https://pushstack.wordpress.com/somfy-rts-protocol/
+https://wiki.pilight.org/somfy
