@@ -1,4 +1,4 @@
 .pio
+.ccls
 .clang_complete
 src/credentials.h
-
