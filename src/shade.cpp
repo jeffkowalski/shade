@@ -37,10 +37,9 @@ static class Blinker {
 } blinker (true);
 
 
-#define EEPROM_SIZE 64
 #define INDICATOR D0
 
-static SomfyRemote somfy ("somfy", 0x131478);  // <- Change remote name and remote code here!
+static SomfyRemote somfy ("somfy", 0x781413);  // <- Change remote name and remote code here!
 
 static void commandShade (String command) {
     blinker.blink ();
@@ -73,8 +72,6 @@ void setup () {
 
     pinMode (INDICATOR, OUTPUT);
     digitalWrite (INDICATOR, HIGH);   // ESP8266 builtin LED is "backwards" i.e. active LOW
-
-    EEPROM.begin (EEPROM_SIZE);
 
     blinker.blink ();
 
