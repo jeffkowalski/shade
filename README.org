@@ -193,11 +193,11 @@ recoded 0xA1 2A 38 91 E5 EF DD
 
 #+CAPTION: shade controller, radio measure, complete signal
 #+NAME:   Shade P - radio.png
-[[file:./background/Shade P - radio.png]]
+[[./background/Shade P - radio.png]]
 
 #+CAPTION: shade controller, radio measure, zoomed in
 #+NAME:   Shade P - radio zoom.png
-[[file:./background/Shade P - radio zoom.png]]
+[[./background/Shade P - radio zoom.png]]
 
 *** Somfy controller radio:
 - antenna output relative to "ADR" test point
@@ -206,11 +206,11 @@ recoded 0xA1 2A 38 91 E5 EF DD
 
 #+CAPTION: Somfy controller, radio measure, complete signal
 #+NAME:   Somfy P - radio
-[[file:./background/Somfy P - radio.png]]
+[[./background/Somfy P - radio.png]]
 
 #+CAPTION: Somfy controller, radio measure, zoomed in
 #+NAME:   Somfy P - radio zoom
-[[file:./background/Somfy P - radio zoom.png]]
+[[./background/Somfy P - radio zoom.png]]
 
 *** Somfy controller logic:
 - mcu output relative to "ADR" test point
@@ -222,11 +222,11 @@ recoded 0xA1 2A 38 91 E5 EF DD
 
 #+CAPTION: Somfy controller, logic measure, complete signal
 #+NAME:   Somfy P - complete.png
-[[file:./background/Somfy P - complete.png]]
+[[./background/Somfy P - complete.png]]
 
 #+CAPTION: Somfy controller, logic measure, zoomed in
 #+NAME:   Somfy P - zoom.png
-[[file:./background/Somfy P - zoom.png]]
+[[./background/Somfy P - zoom.png]]
 
 ** Protocol documentation
 https://fccid.io/DWNTELIS4/Test-Report/pulse-train-information-97885
