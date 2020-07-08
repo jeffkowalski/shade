@@ -2,3 +2,4 @@
 .ccls
 .clang_complete
 src/credentials.h
+background/top_block.py

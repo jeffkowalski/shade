@@ -1,120 +1,246 @@
-* minimal alexa fake-wemo library
-https://github.com/philbowles/weenymo
+#+STARTUP: inlineimages
+#+OPTIONS: toc:nil
 
-** requires
-#include <ESP8266WiFi.h>
-#include <ESPAsyncUDP.h>
-#include <ESPAsyncWebServer.h>
-https://github.com/me-no-dev/ESPAsyncWebServer
+Alexa-enabled Somfy Shade Controller
 
-* improved version of radio control, using a frequency-programmable radio
-[[https://github.com/EinfachArne/Somfy_Remote][Somfy_Remote]]
-
-#ifdef ESP32
-pinRx = 4; pinTx = 2;  // for esp32! Receiver on GPIO pin 4. Transmit on GPIO pin 2.
-#elif ESP8266
-pinRx = 4; pinTx = 5;  // for esp8266! Receiver on pin 4 = D2. Transmit on pin 5 = D1.
-#else
-pinRx = 0; pinTx = 6;  // for Arduino! Receiver on interrupt 0 => that is pin #2. Transmit on pin 6.
-#endif
-
-
-// Set pins according to module
-#if defined __AVR_ATmega168__ || defined __AVR_ATmega328P__
-    gdo0Pin = 2;
-    gdo2Pin = 3;
-#elif ESP32
-    gdo0Pin = 2;
-    gdo2Pin = 4;
-#elif ESP8266
-    gdo0Pin = D2;  // rx yellow (unused)
-    gdo2Pin = D1;  // tx grey
-#endif
-    Serial.printf ("gdo0Pin = %d, gdo2Pin = %d\n", gdo0Pin, gdo2Pin);
-
-** requires
-[[https://github.com/LSatan/SmartRC-CC1101-Driver-Lib][SmartRC-CC1101-Driver-Lib]]
-
-* hardware
-** HiLetgo New Version ESP8266 NodeMCU LUA CP2102 ESP-12E Internet WiFi Development Board Open Source Serial Wireless Module Works Great with Arduino IDE/Micropython
-
-Tools -> Board -> NodeMCU 1.0 (ESP-12E Module)
-Tools -> Upload Speed -> 921600
-Tools -> CPU Frequency -> 80 Mhz
-Tools -> Flash Size -> 4M (3M SPIFFS)
-
-firmware: https://github.com/nodemcu/nodemcu-firmware
-
-** Solu CC1101 Wireless Transceiver Module with spring Antenna for Arduino// Wireless RF Transceiver 315/433/868/915MHZ + spring Antenna Wireless Module
-Worked exactly how it should. Normally the CC1101 breakout boards have
-10 pins. This is because they have 2 VIN pins and 2 GND pins. This one
-has one of each, hence only the 8 pins.  Here's the pinout:
-| 1.GND  | 2.VCC  |
-| 3.GDO0 | 4.CSN  |
-| 5.SCLK | 6.SI   |
-| 7.SO   | 8.GDO2 |
-
-** electrical connection
-
-*** FS1000A
-https://components101.com/sites/default/files/component_pin/433-MHz-RF-Transmitter-Module-Pinout_0.jpg
-
-*** CC1101
-
-| 3v  | red    | VCC | VCC | nc     |     |
-| d7  | blue   | SI  | SCK | purple | d5  |
-| d6  | green  | SO  | GD2 | grey   | d2  |
-| d8  | orange | CSN | GD0 | yellow | d1  |
-| gnd | black  | GND | GND | nc     |     |
-
-
-| CC1101      | color  | NodeMCU | connection     | description                                                                                                                           |
-|-------------+--------+---------+----------------+---------------------------------------------------------------------------------------------------------------------------------------|
-| 1.GND       | gray   | gnd     | ground analog  | Analog Ground Connection                                                                                                              |
-| 2.VCC       | white  | 3v3     | Power Input    | 1.9v to 3.6v                                                                                                                          |
-| 3.GDO0      | yellow | d1      | Digital I/O    | (INPUT) Clock Output, Down Divided from XOSC, Serial Output RX Data, Serial Input TX Data, Analog Text I/O for Prototype / Production Testing |
-| 4.CSN       | orange | d8      | Digital Input  | Serial Configuration Interface, Chip select Digital Output                                                                            |
-| 5.SCLK      | purple | d5      | Digital Input  | Serial Configuration Interface, Clock Input / Data Output                                                                             |
-| 6.SI        | blue   | d7      | Digital Input  | Serial Configuration Interface, Data Input                                                                                            |
-| 7.SO (GDO1) | green  | d6      | Digital Output | Optional Output Test Signals                                                                                                          |
-| 8.GDO2      | brown  | d2      | Digital Output | (OUTPUT) FIFO Status Signals / Clear Channel Indicator / Clock Output, Down-Divided from   XOSC / Serial Output RX Data               |
-
-See https://github.com/supersjimmie/IthoEcoFanRFT  ??
-Connections between the CC1101 and the ESP8266 or Arduino:
-| CC11xx pins   | ESP pins | Arduino pins | Description                                        |
-|---------------+----------+--------------+----------------------------------------------------|
-| 1 - VCC       | VCC      | VCC          | 3v3                                                |
-| 2 - GND       | GND      | GND          | Ground                                             |
-| 3 - MOSI      | 13=D7    | Pin 11       | Data input to CC11xx                               |
-| 4 - SCK       | 14=D5    | Pin 13       | Clock pin                                          |
-| 5 - MISO/GDO1 | 12=D6    | Pin 12       | Data output from CC11xx / serial clock from CC11xx |
-| 6 - GDO2      | 04=D2    | Pin  2       | Programmable output                                |
-| 7 - GDO0      | ?        | Pin  ?       | Programmable output                                |
-| 8 - CSN       | 15=D8    | Pin 10       | Chip select / (SPI_SS)                             |
-Note that CC11xx pin GDO0 is not used. Also note that the GDO2 pin connected to pin 2 on an Arduino. Change #define ITHO_IRQ_PIN in the example ino accordingly.
-
-https://mcpforlife.com/2018/09/24/using-home-app-to-control-your-ventilation-system/ ??
-| CC1101 Pin | Wire Color | CC1101 Pin function | ESP8266 Pin | Description                                 |
-|------------+------------+---------------------+-------------+---------------------------------------------|
-|          1 | Red        | VCC                 | 3V3         | Power supply CC1101 1.8V ~3.6V ESP8266 3.3V |
-|          2 |            | GDO0                |             |                                             |
-|          3 | Green      | CSN                 | D8          | SPI Chip select                             |
-|          4 | White      | SCK                 | D5          | SPI clock                                   |
-|          5 | Yellow     | MOSI                | D7          | SPI data input                              |
-|          6 | Brown      | MISO/GDO1           | D6          | SPI data output                             |
-|          7 | Blue       | GDO2                | D2          | Information output                          |
-|          8 | Black      | GND                 | GND         | Ground                                      |
-|          9 |            | ANT                 |             | Antenna                                     |
-|         10 | Black      | GND                 | GND         | Ground                                      |
-
-https://raw.githubusercontent.com/LSatan/RCSwitch-CC1101-Driver-Lib/master/WIRING%20ESP32.jpg
-* background
-transmission at 433.42 MHz
-
-** original instructable shows connection to existing remote, alexa library
+* Hardware
+** For the microprocessor, use a WiFi enabled [[https://www.amazon.com/HiLetgo-Internet-Development-Wireless-Micropython/dp/B010O1G1ES][NodeMCU ESP8266]]
+- It's not necessary to use the recommended [[https://github.com/nodemcu/nodemcu-firmware][NodeMCU firmware]], since we won't be using LUA.  We'll use PlatformIO instead.
+- Pay attention to the [[http://www.holdentechnology.com/2018/09/21/esp8266-nodemcu-arduino-compiler-pins/][pinouts]]; only a few pins are suitable for general signaling to the radio board.
+** For radio, use the inexpensive and straightforward FS1000A
+- Replace existing crystal with a [[https://www.ebay.com/itm/331637441887][433.42MHz crystal]].
+- Make a [[https://drive.google.com/file/d/1E9KPAPJrZRgGLOQqwd2-3-Px0MuSVreY/view][433MHz loaded antenna]].
+- Connect to NodeMCU referring to [[https://components101.com/sites/default/files/component_pin/433-MHz-RF-Transmitter-Module-Pinout_0.jpg][pinout]] for power and OOK signaling.
+** Another radio alternative is [[https://www.amazon.com/Solu-Wireless-Transceiver-Antenna-Arduino/product-reviews/B00XDL9E64][CC1101]]
+- Frequency-programmable, doesn't require crystal replacement.
+- Requires more communication lines with the MCU, for settings and then OOK signaling.
+*** Spring antenna, 8-pin version
+| NodeMCU | color  | CC1101 | . | CC1101 | color  | NodeMCU |
+|---------+--------+--------+---+--------+--------+---------|
+| gnd     | black  | 1.GND  | . | 2.VCC  | red    | 3v      |
+| d2      | yellow | 3.GDO0 | . | 4.CSN  | orange | d8      |
+| d5      | purple | 5.SCLK | . | 6.SI   | blue   | d7      |
+| d6      | green  | 7.SO   | . | 8.GDO2 | grey   | d1      |
+*** SMA antenna, 10-pin version
+| NodeMCU | color  | CC1101 | . | CC1101 | color  | NodeMCU |
+|---------+--------+--------+---+--------+--------+---------|
+| 3v      | red    | VCC    | . | VCC    | nc     |         |
+| d7      | blue   | SI     | . | SCK    | purple | d5      |
+| d6      | green  | SO     | . | GD2    | grey   | d1      |
+| d8      | orange | CSN    | . | GD0    | yellow | d2      |
+| gnd     | black  | GND    | . | GND    | nc     |         |
+* Firmware
+There are two pre-requisites to using the shade controller:
+** A [[https://github.com/philbowles/weenymo][minimal alexa fake-wemo library]], which requires
+- [[https://github.com/esp8266/Arduino/tree/master/libraries/ESP8266WiFi][Arduino ESP8266wifi]]
+- [[https://github.com/me-no-dev/ESPAsyncUDP][ESPAsyncUDP]]
+- [[https://github.com/me-no-dev/ESPAsyncWebServer][ESPAsyncWebServer]]
+** An [[https://github.com/jeffkowalski/Somfy_Remote][improved version of Somfy_Remote radio control]], based on [[https://github.com/EinfachArne/Somfy_Remote][Einfacharne's version]]
+- Supports both radio types listed above.
+- If using CC1101, requires [[https://github.com/LSatan/SmartRC-CC1101-Driver-Lib][SmartRC-CC1101-Driver-Lib]]
+* Background research
+** Instructable shows connection to existing remote, alexa library
 https://www.instructables.com/id/How-to-Connect-Your-Somfy-Remote-to-Alexa-With-an-/
-** direct radio control, not needing to sacrifice a remote
+** Direct radio control, not needing to sacrifice a remote
 https://4x5mg.inphoto.co.il/2018/06/10/controlling-somfy-blinds-with-esp8266/
-** protocol documentation
+** Somfy Remote hardware
+- [[https://www.datasheets360.com/part/detail/b39431-r708-u310/939810875991665402/][Epcos 433.42MHz Resonator]] sets the transmit frequency
+- 5013225A00 MICROCHIP IC SSOP-20, based on [[http://ww1.microchip.com/downloads/en/devicedoc/41159e.pdf][PIC18FXX8]]
+** gnu-radio
+- [[file:./background/somfy_live_decoder.grc]] can be used to watch live signals
+- requires [[https://github.com/tkuester/gr-reveng][gr-reveng]] for "Pattern Dump" block.
+- output can be fed into decoding script
+** Decoding
+#+NAME: instring
+#+CAPTION: instring
+#+BEGIN_EXAMPLE
+0110011001101001011001010110101001100101010110011010101001010110100101011010100110101010101001010101101001011010
+#+END_EXAMPLE
+
+#+NAME: decoder
+#+CAPTION: decoder
+#+BEGIN_SRC ruby :var instring=instring :results output verbatim :exports both
+bitstring = (instring.scan(/[01]/)).map(&:to_i)
+bits = bitstring.each_slice(2).map do |pair|
+#p pair
+  case pair
+  when [0, 1]
+    1
+  when [1, 0]
+    0
+  else
+    'x'
+  end
+end
+p bits
+
+bytes = bits.each_slice(8).map do |word|
+  # puts "0b#{word.join('')}"
+  "0b#{word.join('')}".to_i(2)
+end
+
+print 'signal  '
+print '0x', ((bytes.map { |b| format('%<b>02X', b: b) }).join ' '), "\n"
+
+(1..6).reverse_each do |ii|
+  bytes[ii] = bytes[ii] ^ bytes[ii - 1]
+end
+
+print 'decoded '
+print '0x', ((bytes.map { |b| format('%<b>02X', b: b) }).join ' '), "\n"
+
+printf "  header   = 0x%X\n", bytes[0] >> 4
+printf "  key      = 0x%X\n", bytes[0] & 0xF
+printf "  command  = 0x%X (%s)\n", bytes[1] >> 4, (['my', 'up', 'down', 'prog'].select.with_index { |c, i| ((bytes[1] >> 4) & (1 << i)).nonzero? }).join('+')
+
+printf "  checksum = 0x%X\n", bytes[1] & 0xF
+printf "  rolling  = 0x%04X\n", bytes[2] * 256 + bytes[3]
+printf "  remote   = 0x%06X\n", (bytes[4] * 256 + bytes[5]) * 256 + bytes[6]
+
+(1..6).each do |ii|
+  bytes[ii] = bytes[ii] ^ bytes[ii - 1]
+end
+
+print 'recoded '
+print '0x', ((bytes.map { |b| format('%<b>02X', b: b) }).join ' '), "\n"
+
+
+#+END_SRC
+
+#+RESULTS: decode
+#+begin_example
+[1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0]
+signal  0xA9 B8 BD 0E 71 03 CC
+decoded 0xA9 11 05 B3 7F 72 CF
+  header   = 0xA
+  key      = 0x9
+  command  = 0x1 (my)
+  checksum = 0x1
+  rolling  = 0x05B3
+  remote   = 0x7F72CF
+recoded 0xA9 B8 BD 0E 71 03 CC
+#+end_example
+
+#+begin_example
+[1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0]
+signal  0xA9 B8 BD 0E 71 03 CC
+decoded 0xA9 11 05 B3 7F 72 CF
+  header   = 0xA
+  key      = 0x9
+  command  = 0x1 (my)
+  checksum = 0x1
+  rolling  = 0x05B3
+  remote   = 0x7F72CF
+recoded 0xA9 B8 BD 0E 71 03 CC
+#+end_example
+
+#+begin_example
+[1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1]
+signal  0xA5 2E 3C 91 E5 EF DD
+decoded 0xA5 8B 12 AD 74 0A 32
+  header   = 0xA
+  key      = 0x5
+  command  = 0x8 (prog)
+  checksum = 0xB
+  rolling  = 0x12AD
+  remote   = 0x740A32
+recoded 0xA5 2E 3C 91 E5 EF DD
+#+end_example
+
+#+begin_example
+[1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, "x"]
+signal  0xA5 2E 3C 91 E5 EF 6E
+decoded 0xA5 8B 12 AD 74 0A 81
+  header   = 0xA
+  key      = 0x5
+  command  = 0x8 (prog)
+  checksum = 0xB
+  rolling  = 0x12AD
+  remote   = 0x740A81
+recoded 0xA5 2E 3C 91 E5 EF 6E
+#+end_example
+
+#+begin_example
+[1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1]
+signal  0xA2 29 3B 91 E5 EF DD
+decoded 0xA2 8B 12 AA 74 0A 32
+  header   = 0xA
+  key      = 0x2
+  command  = 0x8 (prog)
+  checksum = 0xB
+  rolling  = 0x12AA
+  remote   = 0x740A32
+recoded 0xA2 29 3B 91 E5 EF DD
+#+end_example
+
+#+begin_example
+[1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1]
+signal  0xA1 2A 38 91 E5 EF DD
+decoded 0xA1 8B 12 A9 74 0A 32
+  header   = 0xA
+  key      = 0x1
+  command  = 0x8 (prog)
+  checksum = 0xB
+  rolling  = 0x12A9
+  remote   = 0x740A32
+recoded 0xA1 2A 38 91 E5 EF DD
+#+end_example
+** Oscilloscope measurements
+*** shade controller radio:
+- antenna output relative to GND
+- scope settings: 200mV, 1ms, trigger = 200mV
+- shows 1280ms period, 896mV radio amplitude
+
+#+CAPTION: shade controller, radio measure, complete signal
+#+NAME:   Shade P - radio.png
+[[file:./background/Shade P - radio.png]]
+
+#+CAPTION: shade controller, radio measure, zoomed in
+#+NAME:   Shade P - radio zoom.png
+[[file:./background/Shade P - radio zoom.png]]
+
+*** Somfy controller radio:
+- antenna output relative to "ADR" test point
+- scope = 50mV, 1ms, trigger 50mV
+- shows 164mV radio amplitude
+
+#+CAPTION: Somfy controller, radio measure, complete signal
+#+NAME:   Somfy P - radio
+[[file:./background/Somfy P - radio.png]]
+
+#+CAPTION: Somfy controller, radio measure, zoomed in
+#+NAME:   Somfy P - radio zoom
+[[file:./background/Somfy P - radio zoom.png]]
+
+*** Somfy controller logic:
+- mcu output relative to "ADR" test point
+- scope settings: 500mV, 500μs-100ms (measure at 1ms), trigger 500mV
+- shows wakeup = 10,000μs HI, 97,600μs LO
+- hardware sync looks like 5080μs, implying 635μs symbol
+- software sync = 4880μs HI, 640μs LO
+- SYMBOL=640μs
+
+#+CAPTION: Somfy controller, logic measure, complete signal
+#+NAME:   Somfy P - complete.png
+[[file:./background/Somfy P - complete.png]]
+
+#+CAPTION: Somfy controller, logic measure, zoomed in
+#+NAME:   Somfy P - zoom.png
+[[file:./background/Somfy P - zoom.png]]
+
+** Protocol documentation
+https://fccid.io/DWNTELIS4/Test-Report/pulse-train-information-97885
+https://patents.google.com/patent/US7860481B2/en
+https://patents.google.com/patent/US8189620B2/en
+https://pushstack.wordpress.com/2014/04/14/reversing-somfy-rts/
+https://pushstack.wordpress.com/2014/05/17/somfy-rtl-sdr/
 https://pushstack.wordpress.com/somfy-rts-protocol/
 https://wiki.pilight.org/somfy
+https://wiert.me/2016/05/24/somfy-smoove-origin-rts-protocol-pushstack/
+https://pushstack.wordpress.com/2019/03/02/using-semtech-sx1231-to-transmit-custom-frames/
+** Miscellaneous tools
+https://gitlab.com/zub2/rts-tools
+https://github.com/henrythasler/sdr/tree/master/somfy
+https://github.com/nodemcu/nodemcu-firmware/blob/master/app/modules/somfy.c
+https://wiki.kainhofer.com/hardware/vaillantvrt340f#manchester_encoding
+https://gitlab.open-tools.net/kainhofer/vaillant-calormatic340f/-/blob/dfc05932306a5fb6d9809e8d1098f4ab4dcecb9b/Manchester_decode.c
