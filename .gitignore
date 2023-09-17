@@ -1,5 +1,6 @@
 .pio
 .ccls
+.ccls-cache/
 .clang_complete
 src/credentials.h
 background/top_block.py
