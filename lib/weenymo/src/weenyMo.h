@@ -68,10 +68,10 @@ class weenyMo: public AsyncWebServer {
       });
      if(udp.listenMulticast(IPAddress(239,255,255,250), 1900)){
         udp.onPacket( bind([](AsyncUDPPacket packet,String reply){
-              byte* p = (byte*)malloc(packet.length()+1);
+              char* p = (char *)malloc(packet.length()+1);
               memcpy(p,packet.data(),packet.length());
               p[packet.length()]='\0';
-              String msg=reinterpret_cast<char*>(p);
+              String msg(reinterpret_cast<char*>(p));
               free(p);
 
               if(msg.indexOf("M-SEARCH")!=-1) packet.printf(reply.c_str(), reply.length());
