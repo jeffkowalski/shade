@@ -67,7 +67,10 @@ bool getAlexaState() {
 
 static weenyMo weeny ("shade", onVoiceCommand);  // choose the name wisely: Alexa has very selective hearing!
 
+static unsigned long boot_time;
+
 void setup() {
+    boot_time = millis();
     Serial.begin (9600);
 
     pinMode (INDICATOR, OUTPUT);
@@ -88,6 +91,10 @@ void setup() {
 }
 
 void loop() {
+    /* restart every 6 hours, to refresh from all manner of local network debacles */
+    if ((millis() - boot_time) > (1000 * 60 * 60 * 6))  // 6 hours elapsed
+        ESP.restart();
+
     if (WiFi.status() != WL_CONNECTED)
         ESP.restart();
 
