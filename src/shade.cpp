@@ -1,10 +1,9 @@
-#include <Arduino.h>
-#include <EEPROM.h>
 #include "Somfy_Remote.h"
-#include <ESP8266WiFi.h>
 #include "credentials.h"
 #include "weenyMo.h"
-
+#include <Arduino.h>
+#include <EEPROM.h>
+#include <ESP8266WiFi.h>
 
 static class Blinker {
     bool                enabled;
@@ -13,12 +12,14 @@ static class Blinker {
     unsigned long const interval = 1000;  // interval at which to blink (milliseconds)
 
   public:
-    Blinker (bool enable) : enabled (enable), previousMillis (0) {
+    Blinker (bool enable)
+        : enabled (enable)
+        , previousMillis (0) {
         if (enabled)
             pinMode (led, OUTPUT);
     }
 
-    void blink() const {
+    void blink () const {
         if (!enabled)
             return;
         digitalWrite (led, LOW);
@@ -27,7 +28,7 @@ static class Blinker {
         delay (100);
     }
 
-    void update() {
+    void update () {
         unsigned long currentMillis = millis();
         if (currentMillis - previousMillis >= interval) {
             blink();
@@ -36,20 +37,43 @@ static class Blinker {
     }
 } blinker (true);
 
-
 #define INDICATOR D0
 
-static SomfyRemote somfy ("somfy", 0x781413);  // <- Change remote name and remote code here!
+// Declare pointer instead of static object to control initialization timing
+static SomfyRemote * somfy = nullptr;
 
-static void commandShade (String command) {
+static void commandShade (const String & command) {  // Use const reference to avoid copying
+    if (!somfy) {
+        Serial.println ("ERROR: SomfyRemote not initialized");
+        return;
+    }
+
+    if (command.length() == 0) {
+        Serial.println ("ERROR: Empty command received");
+        return;
+    }
+
+    Serial.printf ("commandShade called with: '%s'\n", command.c_str());
+
     blinker.blink();
     Serial.println (command);
-    somfy.move (command);
-    EEPROM.commit();
-    if (command[0] == 'U')               // off
-        digitalWrite (INDICATOR, HIGH);  // ESP8266 builtin LED is "backwards" i.e. active LOW
-    else if (command[0] == 'D')          // on
-        digitalWrite (INDICATOR, LOW);   // ESP8266 builtin LED is "backwards" i.e. active LOW
+
+    // Create a copy for the somfy library to avoid modifying the original
+    String commandCopy = command;
+    somfy->move (commandCopy);
+
+    // Check first character safely
+    char firstChar = command.charAt (0);  // Safer than command[0]
+    if (firstChar == 'U') {               // off
+        digitalWrite (INDICATOR, HIGH);   // ESP8266 builtin LED is "backwards" i.e. active LOW
+        Serial.println ("INDICATOR set HIGH (UP)");
+    }
+    else if (firstChar == 'D') {        // on
+        digitalWrite (INDICATOR, LOW);  // ESP8266 builtin LED is "backwards" i.e. active LOW
+        Serial.println ("INDICATOR set LOW (DOWN)");
+    }
+
+    Serial.println ("commandShade completed");
 }
 
 //
@@ -57,10 +81,10 @@ static void commandShade (String command) {
 //
 static void onVoiceCommand (bool onoff) {
     Serial.printf ("onVoiceCommand %d\n", onoff);
-    commandShade (onoff ? "DOWN" : "UP");
+    commandShade (onoff ? String ("DOWN") : String ("UP"));  // Explicit String construction
 }
 
-bool getAlexaState() {
+bool getAlexaState () {
     Serial.printf ("getAlexaState %d\n", !digitalRead (INDICATOR));
     return !digitalRead (INDICATOR);
 }
@@ -69,7 +93,7 @@ static weenyMo weeny ("shade", onVoiceCommand);  // choose the name wisely: Alex
 
 static unsigned long boot_time;
 
-void setup() {
+void setup () {
     boot_time = millis();
     Serial.begin (9600);
 
@@ -80,7 +104,12 @@ void setup() {
 
     WiFi.begin (WIFI_SSID, WIFI_PSK);  // defined in credentials.h
     WiFi.waitForConnectResult();       // so much neater than those stupid loops and dots
-    weeny.gotIPAddress();              // ready to roll...Tell Alexa to discover devices.
+
+    // Initialize SomfyRemote after EEPROM is ready
+    somfy = new SomfyRemote ("somfy", 0x781413);
+    delay (100);  // Give it time to initialize
+
+    weeny.gotIPAddress();  // ready to roll...Tell Alexa to discover devices.
 
     blinker.blink();
     blinker.blink();
@@ -90,7 +119,7 @@ void setup() {
     Serial.println ("Ready");
 }
 
-void loop() {
+void loop () {
     /* restart every 6 hours, to refresh from all manner of local network debacles */
     if ((millis() - boot_time) > (1000 * 60 * 60 * 6))  // 6 hours elapsed
         ESP.restart();
@@ -102,8 +131,11 @@ void loop() {
     if (Serial.available()) {
         String command = Serial.readString();
         command.trim();
-        if (command[0] == 'U' || command[0] == 'D' || command[0] == 'M' || command[0] == 'P')
-            commandShade (command);
+        if (command.length() > 0) {
+            char firstChar = command.charAt (0);
+            if (firstChar == 'U' || firstChar == 'D' || firstChar == 'M' || firstChar == 'P')
+                commandShade (command);
+        }
     }
 
     blinker.update();
