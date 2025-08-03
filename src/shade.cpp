@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <EEPROM.h>
 #include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
 #include <ESPAsyncWebServer.h>
 
 static class Blinker {
@@ -144,6 +145,7 @@ static void handleStatus (AsyncWebServerRequest * request) {
     response += "\"uptime_seconds\":" + String (uptime) + ",";
     response += "\"wifi_connected\":" + String (WiFi.status() == WL_CONNECTED ? "true" : "false") + ",";
     response += "\"ip_address\":\"" + WiFi.localIP().toString() + "\",";
+    response += "\"hostname\":\"shade.local\",";  // Add hostname info
     response += "\"free_heap\":" + String (ESP.getFreeHeap());
     response += "}";
 
@@ -159,6 +161,13 @@ static void handleReboot (AsyncWebServerRequest * request) {
 static void handleHelp (AsyncWebServerRequest * request) {
     String help = "<!DOCTYPE html><html><head><title>Shade Controller API</title></head><body>";
     help += "<h1>Shade Controller REST API</h1>";
+    help += "<h2>Device Access:</h2>";
+    help += "<ul>";
+    help += "<li><strong>IP Address:</strong> " + WiFi.localIP().toString() + "</li>";
+    help += "<li><strong>Hostname:</strong> shade.local</li>";
+    help += "<li><strong>Alexa Port:</strong> 80 (weenyMo)</li>";
+    help += "<li><strong>REST API Port:</strong> 8080</li>";
+    help += "</ul>";
     help += "<h2>Control Endpoints:</h2>";
     help += "<ul>";
     help += "<li><strong>GET /shade?action=on</strong> - Move shade down</li>";
@@ -174,7 +183,12 @@ static void handleHelp (AsyncWebServerRequest * request) {
     help += "<li><strong>GET /reboot</strong> - Reboot device</li>";
     help += "<li><strong>GET /help</strong> - This help page</li>";
     help += "</ul>";
-    help += "<h2>Examples:</h2>";
+    help += "<h2>Examples (using hostname):</h2>";
+    help += "<pre>";
+    help += "curl http://shade.local:8080/shade?action=down\n";
+    help += "curl http://shade.local:8080/status\n";
+    help += "</pre>";
+    help += "<h2>Examples (using IP):</h2>";
     help += "<pre>";
     help += "curl http://" + WiFi.localIP().toString() + ":8080/shade?action=down\n";
     help += "curl http://" + WiFi.localIP().toString() + ":8080/status\n";
@@ -212,6 +226,33 @@ static void setupRestAPI () {
     restServer.begin();
     Serial.printf ("REST API server started on port 8080\n");
     Serial.printf ("API documentation available at: http://%s:8080/help\n", WiFi.localIP().toString().c_str());
+    Serial.printf ("API also available via hostname: http://shade.local:8080/help\n");
+}
+
+static void setupMDNS () {
+    // Start mDNS service
+    if (MDNS.begin ("shade")) {
+        Serial.println ("mDNS responder started successfully");
+        Serial.println ("Device accessible as 'shade.local'");
+
+        // Add service advertisements - the ESP8266mDNS library will handle both ports
+        MDNS.addService ("http", "tcp", 80);         // Alexa/weenyMo service
+        MDNS.addService ("shade-api", "tcp", 8080);  // REST API service (use custom service name)
+
+        // Add TXT records for service discovery (only 4 parameters: service, protocol, key, value)
+        MDNS.addServiceTxt ("http", "tcp", "device", "shade-controller");
+        MDNS.addServiceTxt ("http", "tcp", "alexa", "enabled");
+        MDNS.addServiceTxt ("shade-api", "tcp", "api", "rest");
+        MDNS.addServiceTxt ("shade-api", "tcp", "description", "Shade Control REST API");
+        MDNS.addServiceTxt ("shade-api", "tcp", "version", "1.0");
+
+        Serial.println ("mDNS services advertised:");
+        Serial.println ("  - http._tcp.local:80 (Alexa/weenyMo service)");
+        Serial.println ("  - shade-api._tcp.local:8080 (REST API)");
+    }
+    else {
+        Serial.println ("ERROR: Failed to start mDNS responder");
+    }
 }
 
 static weenyMo weeny ("shade", onVoiceCommand);  // choose the name wisely: Alexa has very selective hearing!
@@ -228,8 +269,14 @@ void setup () {
 
     blinker.blink();
 
+    // Set hostname before connecting to WiFi
+    WiFi.hostname ("shade");
+
     WiFi.begin (WIFI_SSID, WIFI_PSK);  // defined in credentials.h
     WiFi.waitForConnectResult();       // so much neater than those stupid loops and dots
+
+    // Setup mDNS after WiFi connection
+    setupMDNS();
 
     // Initialize SomfyRemote after EEPROM is ready
     somfy = new SomfyRemote ("somfy", 0x781413);
@@ -246,10 +293,14 @@ void setup () {
     Serial.println ("To program, long-press the program button on remote until blind goes up and down "
                     "slightly, then send 'PROGRAM' command via serial monitor or REST API.");
     Serial.printf ("REST API available at: http://%s:8080/help\n", WiFi.localIP().toString().c_str());
+    Serial.println ("REST API also available at: http://shade.local:8080/help");
+    Serial.println ("Alexa service available at: http://shade.local");
     Serial.println ("Ready");
 }
 
 void loop () {
+    MDNS.update();
+
     if ((millis() - boot_time) > DAILY_REBOOT_INTERVAL) {
         Serial.println ("Daily reboot timer triggered - restarting device");
         ESP.restart();
