@@ -2,5 +2,6 @@
 .ccls
 .ccls-cache/
 .clang_complete
+compile_commands.json
 src/credentials.h
 background/top_block.py
