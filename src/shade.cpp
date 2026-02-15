@@ -1,11 +1,12 @@
-#include "Somfy_Remote.h"
-#include "credentials.h"
-#include "weenyMo.h"
 #include <Arduino.h>
 #include <EEPROM.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <ESPAsyncWebServer.h>
+
+#include "Somfy_Remote.h"
+#include "credentials.h"
+#include "weenyMo.h"
 
 static class Blinker {
     bool                enabled;
